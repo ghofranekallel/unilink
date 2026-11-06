@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UniLink : un seul espace, toutes les langues</title>
+<style>
+:root{--bg:#f6f5f1;--fg:#101828;--card:#fff;--bd:#dcdfe6;--ac:#2f5fe0;--ac2:#f5a524;--mut:#6a7179;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101828;--fg:#f6f5f1;--card:#1b2538;--bd:#2d3a52;--ac:#6f95ff;--mut:#9aa5ba}}
+:root[data-theme="dark"]{--bg:#101828;--fg:#f6f5f1;--card:#1b2538;--bd:#2d3a52;--ac:#6f95ff;--mut:#9aa5ba}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 Arial,Helvetica,sans-serif}
+body.big{font-size:20px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;border-bottom:1px solid var(--bd);flex-wrap:wrap}
+h1{font-size:22px;margin:0}h1 span{color:var(--ac2)}h2{margin:0 0 6px;font-size:24px}h3{margin:0 0 6px;font-size:17px;color:var(--ac)}
+.pts{background:var(--ac2);color:#101828;border-radius:99px;padding:4px 14px;font-weight:700}
+nav{display:flex;gap:6px;padding:10px 20px;overflow-x:auto;border-bottom:1px solid var(--bd)}
+nav button{white-space:nowrap}
+button,select,input,textarea{font:inherit;color:inherit}
+button{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px 14px;cursor:pointer}
+button.on,button.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
+input,select,textarea{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;width:100%}
+main{max-width:1100px;margin:0 auto;padding:20px}
+.g{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:18px}
+.r{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mut{color:var(--mut);font-size:14px}
+.av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700}
+.msg{max-width:85%;padding:8px 12px;border-radius:14px;margin:6px 0;background:var(--bd)}
+.msg.me{margin-left:auto;background:var(--ac);color:#fff}
+.bar{height:14px;border-radius:7px;background:var(--bd);overflow:hidden}.bar i{display:block;height:100%;background:var(--ac2)}
+.cal{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;min-width:560px}.cal div{border:1px solid var(--bd);border-radius:10px;padding:8px;min-height:90px;font-size:14px}
+.ev{background:var(--ac);color:#fff;border-radius:6px;padding:2px 6px;margin-top:4px}
+.sc{overflow-x:auto}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ac2);color:#101828;padding:12px 20px;border-radius:12px;font-weight:700;display:none;z-index:9}
+.star{font-size:34px;background:none;border:0;padding:0 2px}
+.lock{opacity:.45}
+</style></head><body>
+<header><h1>Uni<span>Link</span></h1><span class="mut" id="co">Un seul espace, toutes les langues, pour tout le monde</span><span class="pts" id="pts"></span></header>
+<nav id="nav"></nav><main id="m"></main><div id="toast"></div>
+<script>
+const $=s=>document.querySelector(s),val=i=>($("#"+i)||{value:""}).value.trim();
+const e=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const LN={fr:"Français",en:"English",es:"Español"};
+const P=[
+{fr:"Bonjour, comment puis-je vous aider ?",en:"Hello, how can I help you?",es:"Hola, ¿en qué puedo ayudarle?"},
+{fr:"J’ai un problème avec ma commande",en:"I have a problem with my order",es:"Tengo un problema con mi pedido"},
+{fr:"Pouvez-vous me donner votre numéro de commande ?",en:"Can you give me your order number?",es:"¿Puede darme su número de pedido?"},
+{fr:"Merci beaucoup",en:"Thank you very much",es:"Muchas gracias"},
+{fr:"C’est résolu",en:"It is solved",es:"Está resuelto"},
+{fr:"J’ai une idée pour le projet",en:"I have an idea for the project",es:"Tengo una idea para el proyecto"},
+{fr:"On commence la réunion",en:"Let’s start the meeting",es:"Empecemos la reunión"}];
+const norm=s=>s.toLowerCase().replace(/[^\p{L}\p{N}]/gu,"");
+const tr=(t,to)=>{const n=norm(t),p=P.find(p=>Object.values(p).some(v=>norm(v)==n));return p?p[to]:"⟦"+to.toUpperCase()+"⟧ "+t};
+const BADGES={Communicant:"Envoyer 3 messages",Innovateur:"Proposer une idée",Votant:"Voter pour 3 idées",Planificateur:"Terminer une mission",Évaluateur:"Noter un conseiller"};
+const S={v:"hub",me:"",co:null,coName:"",members:[],users:{},auth:"reg",rtn:"",pts:0,badges:new Set(),sent:0,votes:0,lang:"en",tab:"svc",room:null,lines:[],sum:null,call:false,
+team:[],msgs:[],cl:"en",ideas:[],star:0,emo:"",rec:false,done:null,ct:{name:"",lang:"es",fmt:"liste",code:null,end:false},
+missions:[{t:"Préparer la démo UniLink",d:0},{t:"Répondre aux tickets clients",d:0},{t:"Revoir le planning",d:0},{t:"Écrire le compte rendu",d:0}],
+events:[{d:0,t:"Réunion d’équipe 10h"},{d:2,t:"Point clients 14h"},{d:4,t:"Atelier idées 11h"}],
+rate:{},fl:{sub:true,voice:false,vis:true,big:false}};
+let T=null;
+function speak(t,l){if(S.fl.voice&&window.speechSynthesis){const u=new SpeechSynthesisUtterance(t);u.lang=l||"fr-FR";speechSynthesis.speak(u)}}
+function notify(t){const x=$("#toast");if(S.fl.vis){x.textContent=t;x.style.display="block";clearTimeout(x._t);x._t=setTimeout(()=>x.style.display="none",2600)}speak(t)}
+function award(p,b){S.pts+=p;if(b&&!S.badges.has(b)){S.badges.add(b);notify("Badge débloqué : "+b)}}
+const avg=a=>a.reduce((x,y)=>x+y,0)/a.length;
+const AV=n=>`<div class="av" style="background:hsl(${[...String(n)].reduce((a,c)=>a+c.charCodeAt(0),0)*47%360},55%,42%)">${e(String(n)[0]||"?").toUpperCase()}</div>`;
+const NAV=[["hub","Hub"],["bureau","Bureau virtuel"],["trad","Traduction"],["quest","Quest"],["acces","Accès"],["clients","Clients"],["co","Entreprise"]];
+const sel=(k,v)=>`<select data-c="${k}">${Object.entries(LN).filter(x=>x[0]!="fr").map(([a,b])=>`<option value="${a}" ${a==v?"selected":""}>${b}</option>`).join("")}</select>`;
+const V={
+hub(){const days=["Lun","Mar","Mer","Jeu","Ven"],done=S.missions.filter(m=>m.d).length,pc=Math.round(done/S.missions.length*100);
+return `<h2>Hub</h2><p class="mut">Appels, chat et calendrier au même endroit.</p><div class="g">
+<div class="c"><h3>Appels</h3><p>${S.call?"Appel en cours avec l’équipe…":"Aucun appel en cours."}</p><button class="pri" data-a="call">${S.call?"Raccrocher":"Lancer un appel"}</button></div>
+<div class="c"><h3>Chat d’équipe</h3><div style="max-height:170px;overflow:auto">${S.team.map(m=>`<div class="msg ${m.w==S.me?"me":""}"><b>${m.w}</b> : ${e(m.t)}</div>`).join("")}</div><div class="r"><input id="ti" placeholder="Votre message"><button class="pri" data-a="tsend">Envoyer</button></div></div></div>
+<div class="c" style="margin-top:16px"><h3>Planification du travail à distance : missions de la semaine</h3><div class="bar"><i style="width:${pc}%"></i></div><p class="mut">${done}/${S.missions.length} missions terminées (${pc} %)</p>
+${S.missions.map((m,i)=>`<label class="r"><input type="checkbox" style="width:auto" data-a="mis" data-v="${i}" ${m.d?"checked":""}> ${e(m.t)}</label>`).join("")}</div>
+<div class="c sc" style="margin-top:16px"><h3>Calendrier partagé</h3><div class="cal">${days.map((d,i)=>`<div><b>${d}</b>${S.events.filter(x=>x.d==i).map(x=>`<div class="ev">${e(x.t)}</div>`).join("")}</div>`).join("")}</div>
+<div class="r" style="margin-top:10px"><select id="ed" style="width:auto">${days.map((d,i)=>`<option value="${i}">${d}</option>`).join("")}</select><input id="et" placeholder="Nouvel événement" style="flex:1"><button class="pri" data-a="addev">Ajouter</button></div></div>`},
+bureau(){if(S.room)return V.room();return `<h2>Bureau virtuel</h2><p class="mut">Des salles avec avatars pour se retrouver à distance.</p><div class="g">
+<div class="c"><h3>Salle de réunion</h3><div class="r">${S.members.slice(0,4).map(AV).join("")}</div><p>Meetings avec sous-titres traduits en direct.</p><button class="pri" data-a="join" data-v="meet">Entrer</button></div>
+<div class="c"><h3>Salle des idées</h3><div class="r">${S.members.slice(0,4).map(AV).join("")}</div><p>Chaque idée est traduite, les collègues votent et l’auteur gagne des points.</p><button class="pri" data-a="join" data-v="ideas">Entrer</button></div>
+<div class="c lock"><h3>Salle client privée</h3><p>Sur invitation uniquement. Voir l’onglet Clients.</p></div></div>`},
+room(){if(S.room=="ideas")return `<h2>Salle des idées</h2><div class="r"><button data-a="leave">← Quitter</button></div><div class="c" style="margin-top:12px"><div class="r"><input id="id" placeholder="Votre idée (en français)" style="flex:1"><button class="pri" data-a="idea">Proposer (+10 pts)</button></div></div>
+${S.ideas.map((x,i)=>`<div class="c" style="margin-top:12px"><b>${e(x.t)}</b> <span class="mut">par ${e(x.a||"")}</span><div class="mut">EN : ${e(tr(x.t,"en"))}<br>ES : ${e(tr(x.t,"es"))}</div><div class="r" style="margin-top:8px"><button data-a="vote" data-v="${i}">👍 Voter</button><span>${x.v} vote(s), +5 pts pour chaque vote</span></div></div>`).join("")||`<p class="mut">Aucune idée pour l’instant.</p>`}`;
+return `<h2>Salle de réunion</h2><div class="r"><button data-a="leave">← Quitter</button><span class="mut">Sous-titres en</span>${sel("lang",S.lang)}<button class="pri" data-a="sum">🤖 Assistant : résumer</button></div>
+<div class="c" style="margin-top:12px"><div class="r">${S.members.slice(0,4).map(AV).join("")}</div></div>
+<div class="c" style="margin-top:12px"><h3>Sous-titres traduits en direct</h3><div id="sub">${S.fl.sub?subs():`<span class="mut">Sous-titres désactivés (voir Accès).</span>`}</div></div>
+${S.sum?`<div class="c" style="margin-top:12px"><h3>Résumé de la réunion</h3><ul>${S.sum.map(x=>`<li>${e(x)}</li>`).join("")}</ul></div>`:""}`},
+trad(){return `<h2>Traduction</h2><p class="mut">Sous-titres et chat traduits en direct. Cette démo comprend quelques phrases types.</p><div class="c"><div class="r"><select id="tf" style="width:auto">${Object.entries(LN).map(([a,b])=>`<option value="${a}">${b}</option>`).join("")}</select><span>→</span><select id="tt" style="width:auto">${Object.entries(LN).map(([a,b])=>`<option value="${a}" ${a=="en"?"selected":""}>${b}</option>`).join("")}</select></div>
+<input id="tx" placeholder="Écrivez une phrase" style="margin-top:10px"><div class="r" style="margin-top:10px"><button class="pri" data-a="trd">Traduire</button></div><p id="to" style="font-size:20px;font-weight:700"></p>
+<div class="r">${P.map((p,i)=>`<button data-a="tphr" data-v="${i}">${e(p.fr)}</button>`).join("")}</div></div>`},
+quest(){const rk=Object.entries(S.rate).filter(x=>x[1].length).map(([n,a])=>[n,avg(a),a.length]).sort((a,b)=>b[1]-a[1]);
+return `<h2>Quest</h2><p class="mut">Points, badges et classement pour motiver l’équipe.</p><div class="g"><div class="c"><h3>Mes points</h3><p style="font-size:40px;font-weight:700;margin:0">${S.pts}</p><p class="mut">Messages +2, idées +10, votes +5, missions +20</p></div>
+<div class="c"><h3>Badges</h3>${Object.entries(BADGES).map(([b,d])=>`<p class="${S.badges.has(b)?"":"lock"}">${S.badges.has(b)?"🏅":"🔒"} <b>${b}</b> <span class="mut">${d}</span></p>`).join("")}</div>
+<div class="c"><h3>Classement des conseillers</h3>${!rk.length?"<p class=\"mut\">Aucun avis pour l’instant.</p>":""}${rk.map((x,i)=>`<p class="r">${i+1}. ${AV(x[0])} <b>${x[0]}</b> ⭐ ${x[1].toFixed(1)} <span class="mut">(${x[2]} avis)</span></p>`).join("")}</div></div>`},
+acces(){const o=(k,t,d)=>`<div class="c"><h3>${t}</h3><p>${d}</p><button class="${S.fl[k]?"on":""}" data-a="fl" data-v="${k}">${S.fl[k]?"Activé":"Désactivé"}</button></div>`;
+return `<h2>Accès</h2><p class="mut">Une communication accessible à tous.</p><div class="g">${o("sub","Sous-titres","Affiche les sous-titres dans les réunions.")}${o("voice","Lecture vocale","Lit à voix haute les messages et alertes.")}${o("vis","Rappels visuels","Affiche une alerte visible pour chaque événement.")}${o("big","Texte agrandi","Augmente la taille du texte.")}</div>`},
+clients(){const t=(k,l)=>`<button class="${S.tab==k?"on":""}" data-a="ctab" data-v="${k}">${l}</button>`;
+return `<h2>Communication avec les clients</h2><div class="r" style="margin:10px 0">${t("svc","Service client")}${t("rev","Review")}${t("meet","Meetings clients")}</div>${V[S.tab]()}`},
+svc(){const cl=S.cl,col=(side)=>S.msgs.map(m=>{const l=side=="c"?cl:"fr",txt=m.l==l?m.t:tr(m.t,l);return `<div class="msg ${m.s==side?"me":""}">${e(txt)}${m.s!=side?`<div class="mut">original : ${e(m.t)}</div>`:""}</div>`}).join("")||`<span class="mut">Aucun message.</span>`;
+const chips=(side)=>[0,1,2,3,4].map(i=>`<button data-a="chip" data-v="${side}${i}">${e(P[i][side=="c"?cl:"fr"])}</button>`).join("");
+return `<p class="mut">Le client écrit dans sa langue, le conseiller lit et répond dans la sienne, en temps réel.</p><div class="g">
+<div class="c"><h3>Client ${sel("cl",cl)}</h3><div style="min-height:140px;max-height:240px;overflow:auto">${col("c")}</div><input id="ci" placeholder="Écrire en ${LN[cl]}" style="margin:8px 0"><div class="r"><button class="pri" data-a="csend" data-v="c">Envoyer</button></div><div class="r" style="margin-top:8px">${chips("c")}</div></div>
+<div class="c"><h3>Conseiller (Français)</h3><div style="min-height:140px;max-height:240px;overflow:auto">${col("a")}</div><input id="ai" placeholder="Répondre en français" style="margin:8px 0"><div class="r"><button class="pri" data-a="csend" data-v="a">Envoyer</button></div><div class="r" style="margin-top:8px">${chips("a")}</div></div></div>`},
+rev(){if(S.done)return `<div class="c"><h3>Merci pour votre avis</h3><p>Note enregistrée. La nouvelle moyenne de ${e(S.rtn)} est de <b>${S.done}</b>, visible dans le classement (Quest).</p><button data-a="again">Nouvelle review</button></div>`;
+return `<div class="c"><h3>Évaluer un conseiller</h3><select data-c="rtn" style="margin-bottom:8px">${S.members.map(m=>`<option ${m==S.rtn?"selected":""}>${e(m)}</option>`).join("")}</select><p class="mut">Par étoiles, texte, voix ou emoji. La note compte dans le classement du conseiller.</p><div>${[1,2,3,4,5].map(n=>`<button class="star" data-a="star" data-v="${n}">${n<=S.star?"⭐":"☆"}</button>`).join("")}</div>
+<div class="r">${["😀","🙂","😐","🙁"].map(x=>`<button class="${S.emo==x?"on":""}" data-a="emo" data-v="${x}">${x}</button>`).join("")}<button class="${S.rec?"on":""}" data-a="rec">🎤 ${S.rec?"Message vocal enregistré":"Enregistrer un message vocal"}</button></div>
+<textarea id="rt" rows="3" placeholder="Votre avis (texte)" style="margin:10px 0"></textarea><button class="pri" data-a="submit">Envoyer la review</button></div>`},
+meet(){const c=S.ct;if(!c.code)return `<div class="c"><h3>Créer une salle privée</h3><p class="mut">Salles privées sur invitation, avec compte rendu dans la langue et le format du client.</p>
+<input id="cn" placeholder="Nom du client" value="${e(c.name)}" style="margin-bottom:8px"><div class="r">${sel("ctl",c.lang)}<select data-c="ctf"><option value="liste" ${c.fmt=="liste"?"selected":""}>Format : liste à puces</option><option value="texte" ${c.fmt=="texte"?"selected":""}>Format : texte</option></select></div><br><button class="pri" data-a="mk">Créer la salle et inviter</button></div>`;
+const L=[6,0,2,4,3].map(i=>tr(P[i].fr,c.lang));
+return `<div class="c"><h3>Salle privée de ${e(c.name||"votre client")} 🔒</h3><p>Invitation envoyée avec le code <b>${c.code}</b>. Seuls les invités peuvent entrer.</p><div class="r">${[S.me,c.name||"Client"].map(AV).join("")}</div>
+${c.end?`<h3 style="margin-top:14px">Compte rendu (${LN[c.lang]})</h3>${c.fmt=="liste"?`<ul>${L.map(x=>`<li>${e(x)}</li>`).join("")}</ul>`:`<p>${e(L.join(". "))}.</p>`}<button data-a="reset">Nouvelle salle</button>`:`<button class="pri" data-a="end" style="margin-top:12px">Terminer la réunion</button>`}</div>`}};
+V.auth=()=>{const r=S.auth=="reg";return `<div class="c" style="max-width:520px;margin:20px auto"><h2>Bienvenue sur UniLink</h2><p class="mut">Une application universelle : chaque entreprise a son propre espace et son ID unique.</p><div class="r" style="margin:10px 0"><button class="${r?"on":""}" data-a="tauth" data-v="reg">Créer le compte de mon entreprise</button><button class="${r?"":"on"}" data-a="tauth" data-v="join">Rejoindre avec un ID</button></div>`+(r?`<input id="rn" placeholder="Nom de l’entreprise (ex. Société X)" style="margin-bottom:8px"><input id="ra" placeholder="Votre nom (administrateur)" style="margin-bottom:8px"><button class="pri" data-a="reg">Créer le compte et obtenir l’ID</button>`:`<input id="ji" placeholder="ID de l’entreprise (ex. UL-AB12CD)" style="margin-bottom:8px"><input id="jn" placeholder="Votre nom" style="margin-bottom:8px"><button class="pri" data-a="joinco">Rejoindre mon entreprise</button>`)+`<p class="mut" style="margin-top:12px">${DBH?"Espace partagé : vos collègues se connectent avec l’ID.":"Mode local : les données restent sur cet appareil."}</p></div>`};
+V.co=()=>`<h2>Entreprise</h2><div class="g"><div class="c"><h3>${e(S.coName)}</h3><p>ID unique de l’entreprise :</p><p style="font-size:30px;font-weight:700;letter-spacing:2px;margin:0">${e(S.co)}</p><p class="mut">Donnez cet ID à vos collègues : ils l’utilisent dans « Rejoindre avec un ID ».</p><div class="r"><button data-a="copy">Copier l’ID</button><button data-a="logout">Se déconnecter</button></div></div><div class="c"><h3>Membres (${S.members.length})</h3>${S.members.map(m=>`<p class="r">${AV(m)} ${e(m)}${m==S.me?" (vous)":""}</p>`).join("")}</div></div>`;
+function subs(){return S.lines.map(l=>`<p style="margin:6px 0"><b>${l.w}</b> : ${e(P[l.p][S.lang])}<br><span class="mut">${e(P[l.p].fr)}</span></p>`).join("")||`<span class="mut">En attente de la prise de parole…</span>`}
+function render(){if(!S.co){$("#nav").innerHTML="";$("#m").innerHTML=V.auth();$("#pts").textContent="";$("#co").textContent="Un seul espace, toutes les langues, pour tout le monde";return}$("#co").textContent=S.coName+" · ID "+S.co;$("#nav").innerHTML=NAV.map(([k,l])=>`<button class="${S.v==k?"on":""}" data-a="go" data-v="${k}">${l}</button>`).join("");$("#m").innerHTML=V[S.v]();$("#pts").textContent="⭐ "+S.pts+" pts";document.body.classList.toggle("big",S.fl.big);save()}
+function stop(){clearInterval(T)}
+const SC=[6,5,0,3];
+const A={go(v){stop();S.room=null;S.v=v;render()},call(){S.call=!S.call;notify(S.call?"Appel démarré":"Appel terminé");render()},
+tsend(){const t=val("ti");if(!t)return;S.team.push({w:S.me,t});award(2);S.sent++;if(S.sent>=3)award(0,"Communicant");render()},
+mis(v){const m=S.missions[v];m.d=m.d?0:1;if(m.d){award(20,"Planificateur");notify("Mission terminée : "+m.t)}render()},
+addev(){const t=val("et");if(!t)return;S.events.push({d:+val("ed"),t});notify("Événement ajouté au calendrier");render()},
+join(v){S.room=v;S.lines=[];S.sum=null;if(v=="meet"){T=setInterval(()=>{const i=S.lines.length;if(i>=SC.length)return stop();S.lines.push({w:S.members[i%S.members.length]||S.me,p:SC[i]});const x=$("#sub");if(x&&S.fl.sub)x.innerHTML=subs();speak(P[SC[i]][S.lang],S.lang+"-"+S.lang.toUpperCase())},2500)}render()},
+leave(){stop();S.room=null;render()},
+sum(){S.sum=S.lines.length?S.lines.map(l=>P[l.p].fr):["Aucune parole pour l’instant."];render()},
+idea(){const t=val("id");if(!t)return;S.ideas.push({t,v:0,a:S.me});award(10,"Innovateur");render()},
+vote(v){S.ideas[v].v++;S.votes++;award(5);if(S.votes>=3)award(0,"Votant");render()},
+trd(){const f=val("tf"),t=val("tt"),x=val("tx");let r=tr(x,t);if(f!="fr"&&t!="fr"){const p=P.find(p=>norm(p[f])==norm(x));r=p?p[t]:r}$("#to").textContent=r;speak(r,t)},
+tphr(v){const f=val("tf");$("#tx").value=P[v][f];A.trd()},
+fl(v){S.fl[v]=!S.fl[v];render()},ctab(v){S.tab=v;render()},
+csend(v){const i=$(v=="c"?"#ci":"#ai"),t=i.value.trim();if(!t)return;S.msgs.push({s:v,t,l:v=="c"?S.cl:"fr"});award(2);S.sent++;if(S.sent>=3)award(0,"Communicant");render();const l=S.msgs[S.msgs.length-1];if(v=="c")speak(tr(t,"fr"))},
+chip(v){const s=v[0],i=+v[1];S.msgs.push({s,t:P[i][s=="c"?S.cl:"fr"],l:s=="c"?S.cl:"fr"});award(2);S.sent++;if(S.sent>=3)award(0,"Communicant");render()},
+star(v){S.star=+v;render()},emo(v){S.emo=v;render()},rec(){S.rec=!S.rec;render()},
+submit(){const n=S.star||({"😀":5,"🙂":4,"😐":3,"🙁":2}[S.emo]);if(!n){notify("Choisissez une note ou un emoji");return}const tg=S.rtn||S.members[0];(S.rate[tg]=S.rate[tg]||[]).push(n);S.done=avg(S.rate[tg]).toFixed(1);S.rtn=tg;award(5,"Évaluateur");render()},
+again(){S.done=null;S.star=0;S.emo="";S.rec=false;render()},
+mk(){S.ct.name=val("cn")||"Client";S.ct.code=Math.floor(1000+Math.random()*9000);S.ct.end=false;notify("Invitation envoyée au client");render()},
+end(){S.ct.end=true;render()},reset(){S.ct={name:"",lang:S.ct.lang,fmt:S.ct.fmt,code:null,end:false};render()}};
+document.addEventListener("click",ev=>{const b=ev.target.closest("[data-a]");if(b&&b.tagName!="INPUT")A[b.dataset.a](b.dataset.v)});
+document.addEventListener("change",ev=>{const t=ev.target;if(t.dataset.a=="mis")return A.mis(t.dataset.v);if(t.dataset.c){const k=t.dataset.c;if(k=="cl")S.cl=t.value;else if(k=="lang")S.lang=t.value;else if(k=="ctl")S.ct.lang=t.value;else if(k=="ctf")S.ct.fmt=t.value;else if(k=="rtn")S.rtn=t.value;render()}});
+document.addEventListener("keydown",ev=>{if(ev.key!="Enter")return;const id=ev.target.id;if(id=="ti")A.tsend();if(id=="ci")A.csend("c");if(id=="ai")A.csend("a");if(id=="id")A.idea();if(id=="tx")A.trd()});
+const KEY=["team","ideas","missions","events","rate","msgs","members","users"];
+let DBH=null,last="",unsub=null,tm=null;
+const ls={g:k=>{try{return JSON.parse(localStorage.getItem(k))}catch(x){return null}},s:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(x){}}};
+async function dget(id){if(DBH){try{const x=await DBH.doc("companies/"+id).get();return x.exists?x.data():null}catch(x){}}return ls.g("ul:co:"+id)}
+async function dset(id,d){if(DBH){try{await DBH.doc("companies/"+id).set(d);return}catch(x){}}ls.s("ul:co:"+id,d)}
+function packStr(){S.users[S.me]={pts:S.pts,badges:[...S.badges],sent:S.sent,votes:S.votes};return JSON.stringify(KEY.reduce((o,k)=>(o[k]=S[k],o),{}))}
+function save(){if(!S.co)return;const x=packStr();if(x==last)return;last=x;clearTimeout(tm);tm=setTimeout(()=>dset(S.co,{name:S.coName,s:x}),300)}
+function load(d){const o=JSON.parse(d.s);KEY.forEach(k=>{if(o[k]!==undefined)S[k]=o[k]});const u=S.users[S.me];if(u){S.pts=u.pts;S.badges=new Set(u.badges);S.sent=u.sent;S.votes=u.votes}}
+function sub(){if(unsub)unsub();unsub=null;if(!DBH)return;try{unsub=DBH.doc("companies/"+S.co).onSnapshot(x=>{if(!x.exists)return;const d=x.data();if(d.s==last)return;load(d);last=packStr();const a=document.activeElement;if(!(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)))render()},()=>{})}catch(x){}}
+function reset(){S.pts=0;S.badges=new Set();S.sent=0;S.votes=0;S.v="hub";S.room=null;S.msgs=[];S.ideas=[];S.team=[];S.users={}}
+function login(co,me,d){reset();S.co=co;S.me=me;S.coName=d.name;load(d);if(!S.members.includes(me))S.members.push(me);S.rate[me]=S.rate[me]||[];S.rtn=S.members[0];ls.s("ul:session",{co,me});last="";sub();render()}
+Object.assign(A,{tauth(v){S.auth=v;render()},
+async reg(){const n=val("rn"),a=val("ra");if(!n||!a)return notify("Remplissez les deux champs");const al="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let id;for(let i=0;i<8;i++){id="UL-"+[...crypto.getRandomValues(new Uint8Array(6))].map(x=>al[x%32]).join("");if(!(await dget(id)))break}
+reset();Object.assign(S,{co:id,me:a,coName:n,members:[a],rate:{[a]:[]},rtn:a});ls.s("ul:session",{co:id,me:a});await dset(id,{name:n,s:packStr()});last=packStr();sub();render();notify("Compte créé. ID de l’entreprise : "+id)},
+async joinco(){const id=val("ji").toUpperCase(),n=val("jn");if(!id||!n)return notify("Entrez l’ID et votre nom");const d=await dget(id);if(!d)return notify("ID introuvable");login(id,n,d);notify("Bienvenue dans "+d.name)},
+logout(){if(unsub)unsub();unsub=null;ls.s("ul:session",null);S.co=null;S.coName="";S.members=[];last="";render()},
+copy(){try{navigator.clipboard.writeText(S.co)}catch(x){}notify("ID copié : "+S.co)}});
+(async()=>{render();const w=(p,ms)=>Promise.race([p,new Promise(r=>setTimeout(()=>r(null),ms))]);try{DBH=window.claude?await w(claude.use("db"),5000):null}catch(x){DBH=null}
+const ss=ls.g("ul:session");if(ss){const d=await dget(ss.co);if(d)login(ss.co,ss.me,d)}render()})();
+</script></body></html>
